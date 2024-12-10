@@ -1,0 +1,7 @@
+pyyaml
+Dash
+dash-bootstrap-components
+dash-core-components
+pandas
+numpy
+plotly

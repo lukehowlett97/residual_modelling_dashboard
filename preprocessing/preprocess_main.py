@@ -9,6 +9,7 @@ from event_detection import EventDetector
 from statistics_manager import StatisticsManager
 from file_manager import FileManager
 from pathlib import Path
+from zip_and_push_to_ftp import *
 import pandas as pd
 
 def main():
@@ -18,7 +19,8 @@ def main():
     logger.write_log("Starting preprocessing pipeline.")
 
     # Load Configuration
-    config_path = "config.yaml"  # Path to your configuration file
+    # config_path = "prep_config.yaml"  # Path to your configuration file
+    config_path = "/home/methodman/Projects/res-mod-dashboard/preprocessing/prep_config.yaml"
     config_manager = ConfigManager(config_path, logger)
     config = config_manager.config
     
@@ -88,7 +90,7 @@ def main():
 
                     # Segmentation
                     segmented_periods_dict = segmentation.analyse_periods(group_df, group_config)
-                    
+        
                     # Feature Extraction
                     segmented_features_df = feature_extractor.extract_features_from_segments(group_df, segmented_periods_dict)
 
@@ -123,6 +125,11 @@ def main():
         statistics_manager.generate_dataset_statistics(output_folder)
     except Exception as e:
         logger.write_log(f"Error generating dataset statistics: {e}")
+
+    if config['push_to_ftp']:
+        
+        pass
+
 
     logger.write_log("Preprocessing pipeline completed.")
 

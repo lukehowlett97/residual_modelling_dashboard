@@ -57,10 +57,10 @@ class StatisticsManager:
             'number_of_unclassified_events': lambda: len(sharp_events_dict.get('unclassified', {})),
             'number_of_shimmering_periods': lambda: len(sharp_events_dict.get('shimmering', [])),
             'shimmering_percentage': lambda: (sum([end - start for start, end in sharp_events_dict.get('shimmering', [])]) / len(data_series)) * 100,
-            'mean': lambda: data_series.mean(),
-            'median': lambda: data_series.median(),
-            'mean_kurtosis': lambda: segment_features_df['kurtosis'].mean(),
-            'mean_skewness': lambda: segment_features_df['skewness'].mean()
+            'mean': lambda: data_series.nanmean(),
+            'median': lambda: data_series.nanmedian(),
+            'mean_kurtosis': lambda: segment_features_df['kurtosis'].nanmean(),
+            'mean_skewness': lambda: segment_features_df['skewness'].nanmean()
         }
         
         # If no specific stats are requested, calculate all

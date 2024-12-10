@@ -1,0 +1,26 @@
+  rolling_window: 10
+  poly_order: 2 # savgol_filter polynomial order
+  input_folder: /home/methodman/Projects/data/raw
+  output_folder: /home/methodman/Projects/data/processed
+  columns_to_process:
+    # - iono_mod
+    # - iono_est
+    # - res_oc1
+    # - reg_trop
+    # - reg_iono
+    - ppprtk1
+  max_files: 3  # Uncomment to limit the number of files processed
+  stats_to_calculate: 
+    - range
+    - iqr
+    - std_dev
+    - stability_percentage
+    - number_of_spikes
+    - number_of_steps
+    - number_of_unclassified_events
+    - number_of_shimmering_periods
+    - shimmering_percentage
+    - mean
+    - median
+    # - kurtosis
+    # - skewness

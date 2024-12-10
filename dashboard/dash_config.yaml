@@ -1,0 +1,24 @@
+data_folder: "/run/media/methodman/Samsung_T5/resmod_test/processed"
+residual_types:
+  - res_oc1
+  - reg_trop
+  - reg_iono
+  - ppprtk1
+data_formats:
+  raw_data: ""
+  diff: "_diff"
+  rolling_mean: "_diff_rolling_mean"
+  rolling_std: "_diff_rolling_std"
+  sg_filter: "_sg_filter"
+event_labels:
+  - stable
+  - spikes
+  - steps
+  - unclassified
+  - shimmering
+event_colors:
+  stable: LightGreen
+  spikes: Red
+  steps: Blue
+  unclassified: Gray
+  shimmering: Purple

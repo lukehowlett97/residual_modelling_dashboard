@@ -2,7 +2,7 @@
 
 import numpy as np
 import pandas as pd
-from scipy.stats import kurtosis, skew
+# from scipy.stats import kurtosis, skew
 from typing import List, Dict, Optional
 from FileLogging.simple_logger import SimpleLogger
 

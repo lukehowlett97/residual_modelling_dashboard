@@ -9,7 +9,7 @@ from app import app
 from data_loader import (
     list_years, list_doys, list_stations, list_pkl_files, load_data, get_prns_by_system, parse_filename
 )
-from constants import (
+from dash_settings import (
     DATA_FOLDER, residual_types, data_formats, event_labels, event_colors
 )
 from styles import CUSTOM_CSS
@@ -37,6 +37,48 @@ stats_mapping = {
     'mean_skewness': 'Skew',
     # Add more mappings as needed
 }
+
+#--------------------------------------------------------------------------
+# Callback: Update Residual Type Selector Based on Selected Folder
+#--------------------------------------------------------------------------
+
+@app.callback(
+    [Output('data-summary-residual-selector', 'options'),
+     Output('data-summary-residual-selector', 'value'),
+     Output('residual-type-selector', 'options'),
+     Output('residual-type-selector', 'value')],
+    [Input('folder-selector', 'value')]
+)
+def update_residual_selectors(selected_folder):
+    """
+    Updates the options for residual selectors based on the dataset_statistics.pkl in the selected folder.
+    """
+    if not selected_folder:
+        return [], None, [], None
+
+    DATA_SUMMARY_PATH = Path(DATA_FOLDER) / selected_folder / '_etc' / 'dataset_statistics.pkl'
+
+    try:
+        data_summary_df = pd.read_pickle(DATA_SUMMARY_PATH)
+    except Exception as e:
+        print(f"Error loading data summary for folder '{selected_folder}': {e}")
+        return [], None, [], None
+
+    columns = data_summary_df.columns
+    exclude_columns = ['year', 'doy', 'station', 'prn', 'system', 'prn_number']
+    residuals = set()
+    for col in columns:
+        if col in exclude_columns:
+            continue
+        if '_' in col:
+            residual = col.split('_')[0]
+            residuals.add(residual)
+    residuals = sorted(residuals)
+    options = [{'label': res, 'value': res} for res in residuals]
+    default_value = residuals[0] if residuals else None
+
+    return options, default_value, options, default_value
+
 
 # -------------------------------------------------------------------------
 # Callback: Update Year Selector Based on Selected Folder

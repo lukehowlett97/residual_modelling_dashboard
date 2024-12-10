@@ -59,8 +59,7 @@ class EventDetector:
             else:
                 jump_classification = {}
 
-            if len(jump_classification) > 0 and len(shimmering_periods) > 0:
-                sharp_events_dict[col] = self.combine_events_into_dict(shimmering_periods, jump_classification)
+            sharp_events_dict[col] = self.combine_events_into_dict(shimmering_periods, jump_classification)
 
         return sharp_events_dict
 
