@@ -1,4 +1,4 @@
-data_folder: "/run/media/methodman/Samsung_T5/resmod_test/processed"
+data_folder: "/home/methodman/Projects/data/processed"
 residual_types:
   - res_oc1
   - reg_trop

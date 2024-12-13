@@ -57,10 +57,10 @@ class StatisticsManager:
             'number_of_unclassified_events': lambda: len(sharp_events_dict.get('unclassified', {})),
             'number_of_shimmering_periods': lambda: len(sharp_events_dict.get('shimmering', [])),
             'shimmering_percentage': lambda: (sum([end - start for start, end in sharp_events_dict.get('shimmering', [])]) / len(data_series)) * 100,
-            'mean': lambda: data_series.nanmean(),
-            'median': lambda: data_series.nanmedian(),
-            'mean_kurtosis': lambda: segment_features_df['kurtosis'].nanmean(),
-            'mean_skewness': lambda: segment_features_df['skewness'].nanmean()
+            'mean': lambda: np.nanmean(data_series),
+            'median': lambda: np.nanmedian(data_series),
+            'kurtosis': lambda: np.nanmean(segment_features_df['kurtosis']),
+            'skewness': lambda: np.nanmean(segment_features_df['skewness'])
         }
         
         # If no specific stats are requested, calculate all
@@ -108,7 +108,7 @@ class StatisticsManager:
             print(f"Failed to save statistics: {e}")
             
 
-    def generate_dataset_statistics(self, output_folder_path: Path):
+    def generate_dataset_statistics(self, save_folder_path: Path):
         """
         Reads all satellite statistics files in the output folder and generates a dataset statistics file.
         
@@ -120,7 +120,7 @@ class StatisticsManager:
         self._log("Starting to generate dataset statistics.")
 
         # Iterate through all JSON files containing satellite statistics
-        for file in output_folder_path.glob('**/*.json'):
+        for file in save_folder_path.glob('**/*.json'):
             if 'sat_stats' in file.name:
                 self._log(f"Processing file: {file}")
 
@@ -155,7 +155,7 @@ class StatisticsManager:
                     'year': year,
                     'doy': doy,
                     'station': station,
-                    'prn': prn
+                    'sysnum': prn
                 })
 
                 combined_data.append(data_dict)
@@ -166,94 +166,26 @@ class StatisticsManager:
             print("No satellite statistics files found.")
             return
 
-        self._log("Combining and normalizing data.")
-
         # Normalize the combined data to flatten nested dictionaries
         try:
             # This will flatten the nested dictionaries like 'res_oc1': {...} into 'res_oc1_range', etc.
-            combined_df = pd.json_normalize(combined_data, sep='_')
-            self._log("Data normalization successful.")
+            combined_df = pd.json_normalize(combined_data, sep='-')
         except Exception as e:
             self._log(f"Error during data normalization: {e}. Exiting method.")
             print(f"Error during data normalization: {e}")
             return
 
-        # Handle non-numeric values in statistical columns
-        statistical_columns = ['kurtosis', 'skewness']
-        for col in statistical_columns:
-            # Identify all columns that end with the statistical metric
-            metric_cols = [c for c in combined_df.columns if c.endswith(f"_{col}")]
-
-            for metric_col in metric_cols:
-                # Convert 'Statistic not defined.' to NaN and ensure the column is of float type
-                combined_df[metric_col] = pd.to_numeric(combined_df[metric_col], errors='coerce')
-
         # Extract 'system' and 'prn_number' from 'prn'
         try:
-            combined_df[['system', 'prn_number']] = combined_df['prn'].str.extract(r'([A-Z])(\d+)', expand=True)
+            combined_df[['system', 'prn']] = combined_df['sysnum'].str.extract(r'([A-Z])(\d+)', expand=True)
+            combined_df.drop(columns='sysnum', inplace=True)
             self._log("Extracted 'system' and 'prn_number' from 'prn'.")
         except Exception as e:
             self._log(f"Error extracting 'system' and 'prn_number' from 'prn': {e}.")
             # Depending on requirements, you may choose to continue or exit
 
-        # Rename columns for clarity
-        # Define a mapping from original column names to desired names
-        rename_mapping = {}
-        metrics = ['range', 'iqr', 'std_dev', 'stability_percentage', 'number_of_spikes',
-                'number_of_steps', 'number_of_unclassified_events', 'number_of_shimmering_periods',
-                'shimmering_percentage', 'mean', 'median', 'kurtosis', 'skewness']
-
-        # Iterate through each feature and create rename mappings
-        for feature in metrics:
-            for column in ['res_oc1', 'reg_trop', 'reg_iono', 'ppprtk1']:
-                original_col = f"{column}_{feature}"
-                # Create a concise column name, e.g., 'res_oc1_range'
-                new_col = f"{column}_{feature}"
-                rename_mapping[original_col] = new_col
-
-        # Apply the renaming
-        combined_df.rename(columns=rename_mapping, inplace=True)
-        self._log("Renamed columns for clarity.")
-
-        # Reorder columns
-        # Define the desired order of columns
-        desired_order = [
-            'year', 'doy', 'station', 'prn', 'system', 'prn_number',
-            'res_oc1_range', 'res_oc1_iqr', 'res_oc1_std_dev', 'res_oc1_stability_percentage',
-            'res_oc1_number_of_spikes', 'res_oc1_number_of_steps',
-            'res_oc1_number_of_unclassified_events', 'res_oc1_number_of_shimmering_periods',
-            'res_oc1_shimmering_percentage', 'res_oc1_mean', 'res_oc1_median',
-            'res_oc1_kurtosis', 'res_oc1_skewness',
-            'reg_trop_range', 'reg_trop_iqr', 'reg_trop_std_dev', 'reg_trop_stability_percentage',
-            'reg_trop_number_of_spikes', 'reg_trop_number_of_steps',
-            'reg_trop_number_of_unclassified_events', 'reg_trop_number_of_shimmering_periods',
-            'reg_trop_shimmering_percentage', 'reg_trop_mean', 'reg_trop_median',
-            'reg_trop_kurtosis', 'reg_trop_skewness',
-            'reg_iono_range', 'reg_iono_iqr', 'reg_iono_std_dev', 'reg_iono_stability_percentage',
-            'reg_iono_number_of_spikes', 'reg_iono_number_of_steps',
-            'reg_iono_number_of_unclassified_events', 'reg_iono_number_of_shimmering_periods',
-            'reg_iono_shimmering_percentage', 'reg_iono_mean', 'reg_iono_median',
-            'reg_iono_kurtosis', 'reg_iono_skewness',
-            'ppprtk1_range', 'ppprtk1_iqr', 'ppprtk1_std_dev', 'ppprtk1_stability_percentage',
-            'ppprtk1_number_of_spikes', 'ppprtk1_number_of_steps',
-            'ppprtk1_number_of_unclassified_events', 'ppprtk1_number_of_shimmering_periods',
-            'ppprtk1_shimmering_percentage', 'ppprtk1_mean', 'ppprtk1_median',
-            'ppprtk1_kurtosis', 'ppprtk1_skewness'
-        ]
-
-        # Ensure all desired columns are present
-        missing_cols = [col for col in desired_order if col not in combined_df.columns]
-        if missing_cols:
-            self._log(f"The following expected columns are missing and will be added with NaN values: {missing_cols}")
-            for col in missing_cols:
-                combined_df[col] = np.nan  # Add missing columns with NaN values
-
-        # Reorder the columns
-        combined_df = combined_df[desired_order]
-        self._log("Reordered columns as per the desired layout.")
-
         # Save the DataFrame as a pickle file
-        save_path_dir = output_folder_path / "_etc/"
+        save_path_dir = save_folder_path / "_etc/"
         save_path_dir.mkdir(parents=True, exist_ok=True)
         save_file_path = save_path_dir / "dataset_statistics.pkl"
 
@@ -264,3 +196,55 @@ class StatisticsManager:
         except Exception as e:
             self._log(f"Error saving dataset statistics to pickle file: {e}")
             print(f"Error saving dataset statistics to pickle file: {e}")
+
+
+ # Rename columns for clarity
+        # Define a mapping from original column names to desired names
+        rename_mapping = {}
+        # metrics = ['range', 'iqr', 'std_dev', 'stability_percentage', 'number_of_spikes',
+        #         'number_of_steps', 'number_of_unclassified_events', 'number_of_shimmering_periods',
+        #         'shimmering_percentage', 'mean', 'median', 'kurtosis', 'skewness']
+        
+        # # metrics = set([metric.split('-')[0] for metric in metrics])
+
+        # # # Iterate through each feature and create rename mappings
+        # # for feature in metrics:
+        # #     for column in config['columns_to_process']:
+        # #         original_col = f"{column}_{feature}"
+        # #         # Create a concise column name, e.g., 'res_oc1_range'
+        # #         new_col = f"{column}-{feature}"
+        # #         rename_mapping[original_col] = new_col
+
+        # # # Apply the renaming
+        # # combined_df.rename(columns=rename_mapping, inplace=True)
+        # # self._log("Renamed columns for clarity.")
+
+        # # # Reorder columns
+        # # # Define the desired order of columns
+        # # desired_order = [
+        # #     'res_oc1-range', 'res_oc1-iqr', 'res_oc1-std_dev', 'res_oc1-stability_percentage',
+        # #     'res_oc1-number_of_spikes', 'res_oc1-number_of_steps', 'res_oc1-number_of_unclassified_events',
+        # #     'res_oc1-number_of_shimmering_periods', 'res_oc1-shimmering_percentage', 'res_oc1-mean', 'res_oc1-median',
+        # #     'res_oc1-kurtosis', 'res_oc1-skewness', 'reg_trop-range', 'reg_trop-iqr', 'reg_trop-std_dev',
+        # #     'reg_trop-stability_percentage', 'reg_trop-number_of_spikes', 'reg_trop-number_of_steps',
+        # #     'reg_trop-number_of_unclassified_events', 'reg_trop-number_of_shimmering_periods',
+        # #     'reg_trop-shimmering_percentage', 'reg_trop-mean', 'reg_trop-median', 'reg_trop-kurtosis', 'reg_trop-skewness',
+        # #     'reg_iono-range', 'reg_iono-iqr', 'reg_iono-std_dev', 'reg_iono-stability_percentage',
+        # #     'reg_iono-number_of_spikes', 'reg_iono-number_of_steps', 'reg_iono-number_of_unclassified_events',
+        # #     'reg_iono-number_of_shimmering_periods', 'reg_iono-shimmering_percentage', 'reg_iono-mean', 'reg_iono-median',
+        # #     'reg_iono-kurtosis', 'reg_iono-skewness', 'ppprtk1-range', 'ppprtk1-iqr', 'ppprtk1-std_dev',
+        # #     'ppprtk1-stability_percentage', 'ppprtk1-number_of_spikes', 'ppprtk1-number_of_steps',
+        # #     'ppprtk1-number_of_unclassified_events', 'ppprtk1-number_of_shimmering_periods',
+        # #     'ppprtk1-shimmering_percentage', 'ppprtk1-mean', 'ppprtk1-median', 'ppprtk1-kurtosis', 'ppprtk1-skewness'
+        # # ]
+
+        # # # Ensure all desired columns are present
+        # # missing_cols = [col for col in desired_order if col not in combined_df.columns]
+        # # if missing_cols:
+        # #     self._log(f"The following expected columns are missing and will be added with NaN values: {missing_cols}")
+        # #     for col in missing_cols:
+        # #         combined_df[col] = np.nan  # Add missing columns with NaN values
+
+        # # Reorder the columns
+        # combined_df = combined_df[desired_order]
+        # self._log("Reordered columns as per the desired layout.")

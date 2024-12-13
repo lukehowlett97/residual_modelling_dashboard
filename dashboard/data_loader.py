@@ -24,6 +24,7 @@ def list_years(data_folder, selected_folder):
     if not folder_path.exists():
         return []
     years = [d.name for d in folder_path.iterdir() if d.is_dir()]
+    years = [d for d in years if d[0] is not '_']
     return sorted(years)
 
 def list_doys(data_folder, selected_folder, selected_years):

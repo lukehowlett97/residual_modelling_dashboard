@@ -22,16 +22,18 @@ import dash_bootstrap_components as dbc
 # -------------------------------------------------------------------------
 # Define a mapping from original keys to display headers
 stats_mapping = {
+    'station': 'Stn',
+    'system': 'Sys',
     'mean': 'Mean',
     'median': 'Median',
     'std_dev': 'Std',
     'range': 'Rng',
     'iqr': 'IQR',
     'stability_percentage': 'Stab (%)',
-    'number_of_spikes': '#Spikes',
-    'number_of_steps': '#Steps',
-    'number_of_unclassified_events': '#jumps',
-    'number_of_shimmering_periods': '#Shim',
+    'number_of_spikes': 'Spikes',
+    'number_of_steps': 'Steps',
+    'number_of_unclassified_events': 'jumps',
+    'number_of_shimmering_periods': 'Shim',
     'shimmering_percentage': 'Shim (%)',
     'mean_kurtosis': 'Kurt',
     'mean_skewness': 'Skew',
@@ -45,8 +47,7 @@ stats_mapping = {
 @app.callback(
     [Output('data-summary-residual-selector', 'options'),
      Output('data-summary-residual-selector', 'value'),
-     Output('residual-type-selector', 'options'),
-     Output('residual-type-selector', 'value')],
+    ],
     [Input('folder-selector', 'value')]
 )
 def update_residual_selectors(selected_folder):
@@ -70,14 +71,14 @@ def update_residual_selectors(selected_folder):
     for col in columns:
         if col in exclude_columns:
             continue
-        if '_' in col:
-            residual = col.split('_')[0]
+        if '-' in col:
+            residual = col.split('-')[0]
             residuals.add(residual)
     residuals = sorted(residuals)
     options = [{'label': res, 'value': res} for res in residuals]
     default_value = residuals[0] if residuals else None
 
-    return options, default_value, options, default_value
+    return options, default_value#, options, default_value
 
 
 # -------------------------------------------------------------------------
@@ -266,26 +267,46 @@ def update_selected_datasets(n_clicks_table_add, n_clicks_prn_add, n_clicks_clea
     if button_id == 'add-selected-prns-button':
         if not n_clicks_prn_add or not selected_prns or not files_info:
             raise dash.exceptions.PreventUpdate
-        # Create a copy to avoid in-place modification
+        
+        # Initialize the new datasets
         new_selected_datasets = selected_datasets.copy() if selected_datasets else []
-        existing_filepaths = set(d['filepath'] for d in new_selected_datasets)
-        selected_prn_set = set(selected_prns)
-        selected_files = [f for f in files_info if f"{f['system']}-{f['prn']}" in selected_prn_set]
-        for f in selected_files:
-            if f['filepath'] not in existing_filepaths:
-                new_selected_datasets.append(f)
+
+        # Use a dictionary to group files by PRN
+        grouped_datasets = {
+            (d['system'], d['prn']): d for d in new_selected_datasets
+        }
+
+        for f in files_info:
+            prn_key = (f['system'], f['prn'])
+            if prn_key in grouped_datasets:
+                # If the PRN already exists, update its files
+                grouped_datasets[prn_key]['files'][f['filename'].split('_')[0]] = f['filepath']
+            elif f"{f['system']}-{f['prn']}" in selected_prns:
+                # If the PRN is new, add it
+                grouped_datasets[prn_key] = {
+                    'system': f['system'],
+                    'prn': f['prn'],
+                    'station': f['station'],
+                    'year': f['year'],
+                    'doy': f['doy'],
+                    'files': {f['filename'].split('_')[0]: f['filepath']}
+                }
+
+        # Flatten grouped datasets back to a list
+        new_selected_datasets = list(grouped_datasets.values())
+
         print(f"Added PRNs to datasets: {new_selected_datasets}")
         return new_selected_datasets
     
     elif button_id == 'add-table-selected-rows-button':
         if not n_clicks_table_add or not selected_rows or not data_summary:
             raise dash.exceptions.PreventUpdate
+
         # Create a copy to avoid in-place modification
         new_selected_datasets = selected_datasets.copy() if selected_datasets else []
         existing_filepaths = set(d['filepath'] for d in new_selected_datasets)
         # Convert data_summary (list of dicts) to DataFrame
         data_summary_df = pd.DataFrame(data_summary)
-        print(f"Selected Rows Indices: {selected_rows}")
         for idx in selected_rows:
             if idx >= len(data_summary_df):
                 continue  # Prevent out-of-range errors
@@ -301,13 +322,12 @@ def update_selected_datasets(n_clicks_table_add, n_clicks_prn_add, n_clicks_clea
                 print(f"Missing information in row {idx}: {row}")
                 continue  # Skip if any necessary information is missing
             # Build the file path
-            file_pattern = f"*_{prn}.pkl"
+            file_pattern = f"*_{system}{prn}.pkl"
             station_path = Path(DATA_FOLDER) / folder / year / doy / station
             
-            print(f"station_path: {station_path}")
-            print(f"file_pattern: {file_pattern}")
             
             pkl_files = list(station_path.glob(file_pattern))
+
             if pkl_files:
                 f = pkl_files[0]  # Assuming one file per PRN per station per day
                 file_info = parse_filename(f.name)
@@ -327,7 +347,8 @@ def update_selected_datasets(n_clicks_table_add, n_clicks_prn_add, n_clicks_clea
                     new_selected_datasets.append(file_info)
                     print(f"Added dataset: {file_info}")
             else:
-                print(f"No matching file found for pattern {file_pattern} in {station_path}")
+                # print(f"No matching file found for pattern {file_pattern} in {station_path}")
+                pass
         return new_selected_datasets
     
     elif button_id in ['clear-selected-datasets-button', 'clear-selected-datasets-button-data-summary']:
@@ -356,22 +377,24 @@ def update_selected_datasets(n_clicks_table_add, n_clicks_prn_add, n_clicks_clea
 )
 def update_selected_datasets_list(selected_datasets):
     """
-    Updates the display of selected datasets in the UI.
+    Updates the display of selected datasets in the UI without showing file paths.
     """
     if not selected_datasets:
         return (
             html.P("No datasets selected.", style={'color': '#ffffff'}),
             html.P("No datasets selected.", style={'color': '#ffffff'})
         )
+
+    # Simplify the display: show only dataset names
     items = []
-    for f in selected_datasets:
-        dataset_name = f"{f['station']} | {f['year']}-{f['doy']} | {f['system']}{f['prn']}"
+    for dataset in selected_datasets:
+        dataset_name = f"{dataset['station']} | {dataset['year']}-{dataset['doy']} | {dataset['system']}{dataset['prn']}"
         items.append(html.Div(dataset_name, style={'margin-bottom': '5px'}))
+
     return (
         html.Div(items, style={'maxHeight': '200px', 'overflowY': 'auto'}),
         html.Div(items, style={'maxHeight': '200px', 'overflowY': 'auto'})
     )
-
 # -------------------------------------------------------------------------
 # Callback: Update the Data Summary Table Based on Selected Folder and Residual
 # -------------------------------------------------------------------------
@@ -400,19 +423,24 @@ def update_data_summary(selected_folder, selected_residual):
         return [], [], []  # Return empty columns and data if loading fails
     
     # Define base columns
-    base_columns = ['year', 'doy', 'station', 'prn', ]
+    base_columns = ['year', 'doy', 'station', 'system', 'prn', ]
     
+    if data_summary_df['year'].unique().size == 1:
+        base_columns.remove('year')
+
     # Define residual-specific columns
     residual_columns = [col for col in data_summary_df.columns if col.startswith(selected_residual)]
-    
+
     # Combine base and residual columns
     displayed_columns = base_columns + residual_columns
-    
+
     # Prepare columns for DataTable using the centralized stats_mapping
     columns = []
     for col in displayed_columns:
-        if col.startswith(selected_residual + '_'):
-            key = col.replace(selected_residual + '_', '')
+
+        
+        if col.startswith(selected_residual + '-'):
+            key = col.replace(selected_residual + '-', '')
             display_name = stats_mapping.get(key, key.capitalize())
         else:
             display_name = stats_mapping.get(col, col.capitalize())
@@ -432,7 +460,7 @@ def update_data_summary(selected_folder, selected_residual):
 @app.callback(
     Output('time-series-plot', 'figure'),
     [Input('selected-datasets', 'data'),
-     Input('residual-type-selector', 'value'),
+     Input('residual-type-selector-for-plots', 'value'),
      Input('data-format-selector', 'value'),
      Input('event-labels-selector', 'value')]
 )
@@ -445,16 +473,19 @@ def update_graph(selected_datasets, selected_residual, data_format_suffix, selec
     
     # Determine if events should be displayed based on selected event labels
     display_events = bool(selected_event_labels)
+
+    print(f"selected_datasets: {selected_datasets}")
     
-    file_paths = [f['filepath'] for f in selected_datasets]
+    file_paths = [Path(f['files']['proc']) for f in selected_datasets]
+
     data_frames = load_data(file_paths)
     traces = []
     shapes = []
     annotations = []
     for f in selected_datasets:
-        if 'proc_res' not in f['filepath']:
+        file_path = Path(f['files']['proc'])
+        if 'proc_res' not in file_path.stem:
             continue
-        file_path = Path(f['filepath'])
         file_name = file_path.name
         df = data_frames.get(file_name)
         if df is None:
@@ -598,14 +629,14 @@ def update_graph(selected_datasets, selected_residual, data_format_suffix, selec
 @app.callback(
     Output('statistics-output', 'children'),
     [Input('selected-datasets', 'data'),
-     Input('residual-type-selector', 'value'),
+     Input('residual-type-selector-for-plots', 'value'),
      Input('data-format-selector', 'value')]
 )
 def update_statistics(selected_datasets, selected_residual, data_format_suffix):
     """
     Updates the statistics panel based on the selected datasets, residual type, and data format.
     """
-    if not selected_datasets or not selected_residual:
+    if not selected_datasets:
         return html.P("No data selected.", style={'color': '#ffffff'})
 
     stats_list = []

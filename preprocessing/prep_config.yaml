@@ -3,13 +3,13 @@
   input_folder: /home/methodman/Projects/data/raw
   output_folder: /home/methodman/Projects/data/processed
   columns_to_process:
-    # - iono_mod
-    # - iono_est
-    # - res_oc1
-    # - reg_trop
-    # - reg_iono
+    - iono_mod
+    - iono_est
+    - res_oc1
+    - reg_trop
+    - reg_iono
     - ppprtk1
-  max_files: 3  # Uncomment to limit the number of files processed
+  max_files: 0  # Uncomment to limit the number of files processed
   stats_to_calculate: 
     - range
     - iqr
@@ -22,5 +22,11 @@
     - shimmering_percentage
     - mean
     - median
-    # - kurtosis
-    # - skewness
+    - kurtosis
+    - skewness
+
+  jump_threshold: 0.05  # Default value for jump threshold
+  classification_tolerance: 0.1  # Default value for classification tolerance
+  stability_window: 5  # Default value for stability window
+  shimmering_tolerance: 0.05  # Default value for shimmering tolerance
+  min_shimmering_window: 3  # Default value for minimum shimmering window

@@ -1,0 +1,31 @@
+/* Dropdown container (outermost wrapper) */
+.custom-dropdown.Select {
+    background-color: #23262e; /* Same as the dropdown box color */
+    color: #ffffff; /* White text for dropdown text */
+}
+
+/* Style the placeholder text */
+.custom-dropdown .Select-value-label {
+    color: #ff6600 !important; /* Gray color for placeholder text */
+    font-style: bold !important; /* Optional: make it italic to distinguish it */
+}
+
+/* Dropdown control (visible area before clicking) */
+.custom-dropdown .Select-control {
+    background-color: #23262e; /* Match dropdown box */
+    color: #ffffff; /* White text */
+    border: 1px solid #444; /* Border color */
+}
+
+/* Dropdown menu (options container) */
+.custom-dropdown .Select-menu {
+    background-color: #ffffff; /* White background for options */
+    color: #000000; /* Black text for options */
+}
+
+
+/* Selected dropdown option */
+.custom-dropdown .Select-option--is-selected {
+    background-color: #ff6600; /* Orange background for selected option */
+    color: #ffffff; /* White text for selected option */
+}

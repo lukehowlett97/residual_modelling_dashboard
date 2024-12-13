@@ -1,4 +1,8 @@
 # main.py
+import sys
+sys.path.append('/home/methodman/Projects/lib-main')
+
+import numpy as np
 from config_manager import ConfigManager
 from FileLogging.simple_logger import SimpleLogger
 from data_reader import DataReader
@@ -82,11 +86,13 @@ def main():
 
             for (sys, num), group_df in grouped:
                 try:
+
+                    logger.write_log(f"Processing {system_map[sys]}{num:02d} in file {res_file.name}")
+
                     group_df = group_df.reset_index(drop=True)
 
                     # Calculate rolling statistics
                     rolling_stats_df = rolling_stats.calculate(group_df, group_config)
-                    # logger.write_log(f"Calculated rolling statistics for group {sys}, {num}")
 
                     # Segmentation
                     segmented_periods_dict = segmentation.analyse_periods(group_df, group_config)
@@ -134,4 +140,5 @@ def main():
     logger.write_log("Preprocessing pipeline completed.")
 
 if __name__ == "__main__":
+
     main()

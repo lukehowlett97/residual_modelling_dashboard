@@ -19,6 +19,14 @@ class EventDetector:
         self.min_shimmering_window = min_shimmering_window
         self.logger = logger
     
+    def _update_config(self, config):
+        self.jump_threshold = config.get('jump_threshold', self.jump_threshold)
+        self.classification_tolerance = config.get('classification_tolerance', self.classification_tolerance)
+        self.stability_window = config.get('stability_window', self.stability_window)
+        self.shimmering_tolerance = config.get('shimmering_tolerance', self.shimmering_tolerance)
+        self.min_shimmering_window = config.get('min_shimmering_window', self.min_shimmering_window)
+        
+
     def _log(self, message):
         if self.logger:
             self.logger.write_log(message)
@@ -38,8 +46,10 @@ class EventDetector:
         
         sharp_events_dict = {}
         
+        self._update_config(config)
+        
         for col in config['columns_to_process']:
-            data_series = grouped_data[f"{col}_rolling_mean"]
+            data_series = grouped_data[f"{col}-rolling_mean"]
         
             data_diff_series = data_series.diff().fillna(0)
 
